@@ -1,118 +1,185 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TextInput, Button, FlatList, Alert } from 'react-native';
+import axios from 'axios';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+// Tipe data untuk expense
+type Expense = {
+  id: number;
+  name: string;
+  amount: number;
+  category: string;
+  date: string;
+};
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const API_URL = 'http://192.168.43.105:3000/expenses';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const ExpenseTracker: React.FC = () => {
+  const [name, setName] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [category, setCategory] = useState<string>('');
+  const [date, setDate] = useState<string>('');
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editId, setEditId] = useState<number | null>(null);
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  // Fetch expenses dari API saat komponen dimuat
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const fetchExpenses = async () => {
+    try {
+      const response = await axios.get<Expense[]>(API_URL);
+      setExpenses(response.data);
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      Alert.alert('Error', 'Failed to fetch expenses');
+    }
   };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+  const handleSubmit = async () => {
+    const expenseData = {
+      name,
+      amount: parseFloat(amount),
+      category,
+      date,
+    };
+
+    if (!name || !amount || !category || !date) {
+      Alert.alert('Validation Error', 'Please fill all required fields');
+      return;
+    }
+
+    try {
+      if (isEditing && editId !== null) {
+        // Update expense
+        await axios.put(`${API_URL}/${editId}`, expenseData);
+        Alert.alert('Success', 'Expense updated successfully');
+      } else {
+        // Create new expense
+        await axios.post(API_URL, expenseData);
+        Alert.alert('Success', 'Expense added successfully');
+      }
+      resetForm();
+      fetchExpenses();
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      Alert.alert('Error', 'Failed to save expense');
+    }
+  };
+
+  const resetForm = () => {
+    setName('');
+    setAmount('');
+    setCategory('');
+    setDate('');
+    setIsEditing(false);
+    setEditId(null);
+  };
+
+  const handleEdit = (expense: Expense) => {
+    setName(expense.name);
+    setAmount(expense.amount.toString());
+    setCategory(expense.category);
+    setDate(expense.date);
+    setIsEditing(true);
+    setEditId(expense.id);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      Alert.alert('Success', 'Expense deleted successfully');
+      fetchExpenses(); // Refresh daftar setelah penghapusan
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      Alert.alert('Error', 'Failed to delete expense');
+    }
+  };
+
+  const renderExpense = ({ item }: { item: Expense }) => (
+    <View style={styles.expenseItem}>
+      <Text style={styles.expenseText}>
+        {item.name} - ${item.amount} ({item.category}) on {item.date}
+      </Text>
+      <View style={styles.expenseActions}>
+        <Button title="Edit" onPress={() => handleEdit(item)} />
+        <Button title="Delete" onPress={() => handleDelete(item.id)} />
+      </View>
+    </View>
   );
-}
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Expense Tracker</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Name"
+        value={name}
+        onChangeText={setName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Amount"
+        value={amount}
+        onChangeText={setAmount}
+        keyboardType="numeric"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Category"
+        value={category}
+        onChangeText={setCategory}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Date (YYYY-MM-DD)"
+        value={date}
+        onChangeText={setDate}
+      />
+      <Button title={isEditing ? 'Update Expense' : 'Add Expense'} onPress={handleSubmit} />
+      <FlatList
+        data={expenses}
+        renderItem={renderExpense}
+        keyExtractor={(item) => item.id.toString()}
+      />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  sectionTitle: {
+  title: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: '#fff',
   },
-  highlight: {
-    fontWeight: '700',
+  expenseItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  expenseText: {
+    fontSize: 16,
+  },
+  expenseActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
 });
 
-export default App;
+export default ExpenseTracker;

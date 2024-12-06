@@ -1,0 +1,32 @@
+{
+  "expenses": [
+    {
+      "name": "Makan Siang",
+      "amount": 50000,
+      "category": "Konsumsi",
+      "date": "2023-10-01",
+      "id": "1"
+    },
+    {
+      "id": "2",
+      "name": "Transportasi",
+      "amount": 20000,
+      "category": "Transportasi",
+      "date": "2023-10-02"
+    },
+    {
+      "name": "Belanja",
+      "amount": 150000,
+      "category": "Belanja",
+      "date": "2023-10-03",
+      "id": "3"
+    },
+    {
+      "id": "f137",
+      "name": "Fakhraj",
+      "amount": 50000,
+      "category": "Logistik",
+      "date": "2024-11-11"
+    }
+  ]
+}
